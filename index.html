@@ -386,6 +386,9 @@
     .card-face.reversed { transform: rotate(180deg); }
     .card-face::before { position: absolute; inset: 6px; content: ""; border: 1px solid rgba(235,210,153,.55); border-radius: 5px; }
     .card-face span { position: relative; }
+    .card-face.has-image { border-color: #b79a61; }
+    .card-face.has-image::before { display: none; }
+    .card-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
     .card-name { color: #4c414f; font-size: 11px; font-weight: 750; line-height: 1.35; }
     .card-direction { margin-top: 3px; color: #9b8295; font-size: 10px; }
     .reading-part { padding: 18px 2px; border-top: 1px solid var(--line); }
@@ -580,12 +583,29 @@
         ['two_of_cups','투 오브 컵스','Ⅱ'], ['six_of_cups','식스 오브 컵스','Ⅵ'], ['nine_of_swords','나인 오브 소드','Ⅸ'],
         ['ace_of_wands','에이스 오브 완드','Ⅰ'], ['seven_of_pentacles','세븐 오브 펜타클','Ⅶ']
       ];
+      const tarotStepIds = {
+        the_fool: 'M00', the_magician: 'M01', the_high_priestess: 'M02', the_empress: 'M03',
+        the_emperor: 'M04', the_lovers: 'M06', the_chariot: 'M07', strength: 'M08',
+        the_hermit: 'M09', wheel_of_fortune: 'M10', justice: 'M11', the_hanged_man: 'M12',
+        death: 'M13', temperance: 'M14', the_devil: 'M15', the_tower: 'M16', the_star: 'M17',
+        the_moon: 'M18', the_sun: 'M19', judgement: 'M20', the_world: 'M21',
+        two_of_cups: 'C02', six_of_cups: 'C06', nine_of_swords: 'S09',
+        ace_of_wands: 'W01', seven_of_pentacles: 'P07'
+      };
+      const publicCardBase = 'https://raw.githubusercontent.com/sixseeds/tarot-api/main/cards/';
       const screens = [...document.querySelectorAll('.screen')];
       const $ = id => document.getElementById(id);
       let state = EMPTY_SESSION();
       let authUid = null;
       let authSequence = 0;
       const storageKey = () => authUid ? `tarotring-session-${authUid}` : GUEST_STORAGE_KEY;
+
+      function publicCardImageUrl(cardId) {
+        const id = tarotStepIds[cardId];
+        if (!id) return '';
+        if (id[0] === 'M') return `${publicCardBase}ar${id.slice(1)}.jpg`;
+        return `${publicCardBase}${{ W: 'wa', C: 'cu', S: 'sw', P: 'pe' }[id[0]]}${id.slice(1)}.jpg`;
+      }
 
       function showScreen(id) {
         screens.forEach(s => s.classList.toggle('active', s.id === id));
@@ -856,7 +876,7 @@
               <div class="block-label">YOUR CARDS</div>
               <div class="revealed-cards">${item.cards.map(card => `
                 <div class="revealed">
-                  <div class="card-face ${card.direction === '역방향' ? 'reversed' : ''}"><span>${escapeHtml(card.symbol)}</span></div>
+                  <div class="card-face ${card.direction === '역방향' ? 'reversed' : ''} ${publicCardImageUrl(card.id) ? 'has-image' : ''}"><span>${escapeHtml(card.symbol)}</span>${publicCardImageUrl(card.id) ? `<img src="${escapeHtml(publicCardImageUrl(card.id))}" alt="" loading="lazy">` : ''}</div>
                   <div class="card-name">${escapeHtml(card.name)}</div>
                   <div class="card-direction">${escapeHtml(card.position)} · ${escapeHtml(card.direction)}</div>
                 </div>`).join('')}
@@ -866,6 +886,12 @@
               <div class="reading-part"><h3>카드의 조언</h3><p>${escapeHtml(item.advice)}</p></div>
             </div>
           </article>`).join('');
+        $('conversationThread').querySelectorAll('.card-face img').forEach(img => {
+          img.addEventListener('error', () => {
+            img.closest('.card-face')?.classList.remove('has-image');
+            img.remove();
+          });
+        });
         $('nextQuestions').innerHTML = turn.next.map(([question, count]) => `
           <button class="next-question" data-question="${question}" data-count="${count}">
             <span>${question}</span><small>${count}장 추천 →</small>
