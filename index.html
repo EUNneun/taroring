@@ -108,6 +108,22 @@
       cursor: pointer;
       font-size: 18px;
     }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .auth-button {
+      min-height: 36px;
+      max-width: 132px;
+      padding: 7px 11px;
+      overflow: hidden;
+      border: 1px solid var(--lavender-2);
+      border-radius: 999px;
+      color: var(--plum-deep);
+      background: rgba(255,255,255,.72);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
     main { position: relative; z-index: 2; }
     .screen { display: none; min-height: calc(100vh - 72px); padding: 12px 22px 38px; }
@@ -462,7 +478,10 @@
     <div class="stars"></div>
     <header>
       <button class="brand" id="brandBtn" aria-label="처음으로"><span class="brand-mark">☾</span>타로링</button>
-      <button class="ghost-icon" id="resetBtn" aria-label="새 상담" title="새 상담">↻</button>
+      <div class="header-actions">
+        <button class="auth-button" id="authBtn" hidden>Google 로그인</button>
+        <button class="ghost-icon" id="resetBtn" aria-label="새 상담" title="새 상담">↻</button>
+      </div>
     </header>
 
     <main>
@@ -544,7 +563,8 @@
   <script type="module" src="./firebase.js"></script>
   <script>
     (() => {
-      const STORAGE_KEY = 'taroring-mvp-prototype-v1';
+      const GUEST_STORAGE_KEY = 'taroring-mvp-prototype-v1';
+      const EMPTY_SESSION = () => ({ question: '', count: 3, selected: [], turns: [], currentTurn: 0 });
       const starterQuestions = [
         '그 사람의 마음이 궁금해', '연락해도 될까?', '재회 가능성이 있을까?',
         '이직해도 될까?', 'A와 B 중 고민돼'
@@ -562,7 +582,10 @@
       ];
       const screens = [...document.querySelectorAll('.screen')];
       const $ = id => document.getElementById(id);
-      let state = { question: '', count: 3, selected: [], turns: [], currentTurn: 0 };
+      let state = EMPTY_SESSION();
+      let authUid = null;
+      let authSequence = 0;
+      const storageKey = () => authUid ? `tarotring-session-${authUid}` : GUEST_STORAGE_KEY;
 
       function showScreen(id) {
         screens.forEach(s => s.classList.toggle('active', s.id === id));
@@ -577,16 +600,55 @@
       }
 
       function save() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        window.taroringCloud?.saveSession?.(state).catch(() => {});
+        state.sessionId ||= crypto.randomUUID();
+        localStorage.setItem(storageKey(), JSON.stringify(state));
+        if (authUid) window.taroringCloud?.saveSession(state).catch(() => toast('클라우드 저장을 확인해 주세요'));
       }
 
       function clearSession() {
-        localStorage.removeItem(STORAGE_KEY);
-        state = { question: '', count: 3, selected: [], turns: [], currentTurn: 0 };
+        localStorage.removeItem(storageKey());
+        state = EMPTY_SESSION();
+        if (authUid) save();
         $('homeQuestion').value = '';
         showScreen('homeScreen');
         toast('새 상담을 시작할게요');
+      }
+
+      function restore(session) {
+        if (!Array.isArray(session?.turns) || !session.turns.length) return false;
+        state = { ...EMPTY_SESSION(), ...session, currentTurn: session.turns.length - 1 };
+        renderReading();
+        showScreen('readingScreen');
+        return true;
+      }
+
+      async function handleAuth(user) {
+        const sequence = ++authSequence;
+        const guest = !authUid && state.turns.length ? structuredClone(state) : null;
+        authUid = user?.uid || null;
+        $('authBtn').hidden = false;
+        $('authBtn').textContent = user ? `${user.name} · 로그아웃` : 'Google 로그인';
+        if (!user) {
+          if (guest) return;
+          state = EMPTY_SESSION();
+          showScreen('homeScreen');
+          return;
+        }
+        const local = JSON.parse(localStorage.getItem(storageKey()) || 'null');
+        if (guest && !local?.turns?.length) {
+          state = guest;
+          save();
+          localStorage.removeItem(GUEST_STORAGE_KEY);
+          restore(state);
+          return;
+        }
+        if (restore(local)) return;
+        try {
+          const remote = await window.taroringCloud.loadLatestSession();
+          if (sequence !== authSequence) return;
+          if (restore(remote)) localStorage.setItem(storageKey(), JSON.stringify(state));
+          else { state = EMPTY_SESSION(); showScreen('homeScreen'); }
+        } catch (_) { toast('저장된 상담을 불러오지 못했어요'); }
       }
 
       function chooseCount(question) {
@@ -850,20 +912,35 @@
         if (e.target === $('questionModal')) $('questionModal').classList.remove('open');
       });
       $('brandBtn').addEventListener('click', () => showScreen('homeScreen'));
+      $('authBtn').addEventListener('click', async () => {
+        if (!window.taroringCloud) return toast('로그인 연결을 준비하고 있어요');
+        $('authBtn').disabled = true;
+        try {
+          if (authUid) {
+            await window.taroringCloud.signOut();
+          } else {
+            await window.taroringCloud.signInWithGoogle();
+          }
+        } catch (error) {
+          if (error.code !== 'auth/popup-closed-by-user') toast('구글 로그인에 실패했어요. 인증 도메인 설정을 확인해 주세요');
+        } finally {
+          $('authBtn').disabled = false;
+        }
+      });
+      window.addEventListener('taroring-auth', event => {
+        handleAuth(event.detail).catch(() => toast('상담을 불러오지 못했어요'));
+      });
       $('resetBtn').addEventListener('click', () => {
         if (!state.turns.length || confirm('현재 상담을 닫고 새로 시작할까요?')) clearSession();
       });
 
       try {
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        const saved = JSON.parse(localStorage.getItem(GUEST_STORAGE_KEY));
         if (saved?.turns?.length) {
-          state = saved;
-          state.currentTurn = state.turns.length - 1;
-          renderReading();
-          showScreen('readingScreen');
+          restore(saved);
           toast('이전 상담을 이어서 보여드려요');
         }
-      } catch (_) { localStorage.removeItem(STORAGE_KEY); }
+      } catch (_) { localStorage.removeItem(GUEST_STORAGE_KEY); }
     })();
   </script>
 </body>
