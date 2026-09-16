@@ -592,17 +592,27 @@
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }
 
-      function toast(message) {
+      function toast(message, duration = 1900) {
         $('toast').textContent = message;
         $('toast').classList.add('show');
         clearTimeout(toast.timer);
-        toast.timer = setTimeout(() => $('toast').classList.remove('show'), 1900);
+        toast.timer = setTimeout(() => $('toast').classList.remove('show'), duration);
+      }
+
+      function cloudSaveErrorMessage(error) {
+        if (error?.code === 'permission-denied') return '클라우드 저장 권한이 없어요. Firestore 규칙을 확인해 주세요.';
+        if (error?.code === 'not-found' || error?.code === 'failed-precondition') return '클라우드 저장소를 찾지 못했어요. Firestore 데이터베이스를 확인해 주세요.';
+        if (error?.code === 'unavailable') return '클라우드 연결이 불안정해요. 잠시 후 다시 시도해 주세요.';
+        return '클라우드 저장에 실패했어요. 잠시 후 다시 시도해 주세요.';
       }
 
       function save() {
         state.sessionId ||= crypto.randomUUID();
         localStorage.setItem(storageKey(), JSON.stringify(state));
-        if (authUid) window.taroringCloud?.saveSession(state).catch(() => toast('클라우드 저장을 확인해 주세요'));
+        if (authUid) window.taroringCloud?.saveSession(state).catch(error => {
+          console.error('TarotRing cloud save failed:', error);
+          toast(cloudSaveErrorMessage(error), 5000);
+        });
       }
 
       function clearSession() {
