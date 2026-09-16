@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#6e5a83" />
+  <title>타로링 · MVP 프로토타입</title>
+  <style>
+    :root {
+      --ink: #302a36;
+      --muted: #756c7b;
+      --plum: #6e5a83;
+      --plum-deep: #514161;
+      --lavender: #eee8f2;
+      --lavender-2: #ddd2e6;
+      --cream: #fbf8f2;
+      --paper: rgba(255,255,255,.82);
+      --gold: #c9a86a;
+      --line: rgba(74,55,87,.13);
+      --shadow: 0 18px 48px rgba(53,38,64,.12);
+      --radius: 24px;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: #ebe5ec; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: Pretendard, "Noto Sans KR", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(255,255,255,.95) 0 8%, transparent 28%),
+        radial-gradient(circle at 92% 92%, rgba(183,158,196,.22), transparent 32%),
+        linear-gradient(145deg, #f4eff3, #e5dde7);
+    }
+
+    button, textarea { font: inherit; }
+    button { -webkit-tap-highlight-color: transparent; }
+
+    .app {
+      position: relative;
+      width: min(100%, 480px);
+      min-height: 100vh;
+      margin: 0 auto;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% -8%, rgba(255,255,255,.96), transparent 34%),
+        var(--cream);
+      box-shadow: 0 0 80px rgba(48,34,56,.14);
+    }
+
+    .stars, .stars::before, .stars::after {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      content: "";
+      opacity: .45;
+      background-image:
+        radial-gradient(circle, rgba(110,90,131,.35) 0 1px, transparent 1.5px),
+        radial-gradient(circle, rgba(201,168,106,.45) 0 1px, transparent 1.5px);
+      background-position: 22px 42px, 83px 118px;
+      background-size: 137px 149px, 193px 181px;
+    }
+
+    header {
+      position: relative;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 72px;
+      padding: 14px 20px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      border: 0;
+      color: var(--plum-deep);
+      background: none;
+      cursor: pointer;
+      font-family: Georgia, "Noto Serif KR", serif;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -.04em;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      color: #fff;
+      border-radius: 50%;
+      background: var(--plum);
+      box-shadow: 0 5px 15px rgba(80,61,95,.23);
+      font-size: 15px;
+    }
+
+    .ghost-icon {
+      width: 38px;
+      height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 50%;
+      color: var(--plum);
+      background: rgba(255,255,255,.55);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    main { position: relative; z-index: 2; }
+    .screen { display: none; min-height: calc(100vh - 72px); padding: 12px 22px 38px; }
+    .screen.active { display: block; animation: enter .42s cubic-bezier(.2,.8,.2,1); }
+    @keyframes enter { from { opacity: 0; transform: translateY(10px); } }
+
+    .eyebrow {
+      display: inline-flex;
+      gap: 7px;
+      align-items: center;
+      padding: 7px 11px;
+      color: var(--plum);
+      border: 1px solid var(--lavender-2);
+      border-radius: 999px;
+      background: rgba(255,255,255,.62);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    h1, h2, h3 { font-family: Georgia, "Noto Serif KR", serif; }
+    h1 { margin: 18px 0 12px; font-size: clamp(34px, 10vw, 44px); line-height: 1.23; letter-spacing: -.055em; }
+    h2 { margin: 14px 0 8px; font-size: 26px; line-height: 1.35; letter-spacing: -.04em; }
+    h3 { margin-bottom: 9px; font-size: 17px; letter-spacing: -.025em; }
+    .sub { color: var(--muted); font-size: 15px; line-height: 1.7; }
+
+    .home-hero { padding-top: 36px; text-align: center; }
+    .moon {
+      position: relative;
+      width: 126px;
+      height: 126px;
+      margin: 12px auto 28px;
+      border: 1px solid rgba(201,168,106,.45);
+      border-radius: 50%;
+      background: radial-gradient(circle at 42% 38%, #fffef9 0 26%, #efe3cd 64%, #d0b67f 100%);
+      box-shadow: 0 0 0 14px rgba(201,168,106,.06), 0 20px 55px rgba(110,90,131,.18);
+    }
+    .moon::before {
+      position: absolute;
+      inset: 15px 7px 12px 35px;
+      content: "";
+      border-radius: 50%;
+      background: var(--cream);
+      box-shadow: -6px 0 18px rgba(105,84,115,.08);
+    }
+    .moon::after { position: absolute; top: 8px; right: -17px; content: "✦"; color: var(--gold); font-size: 23px; }
+
+    .question-box {
+      position: relative;
+      margin-top: 28px;
+      padding: 7px;
+      border: 1px solid rgba(110,90,131,.16);
+      border-radius: 22px;
+      background: rgba(255,255,255,.78);
+      box-shadow: var(--shadow);
+    }
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 94px;
+      resize: none;
+      border: 0;
+      outline: none;
+      padding: 16px 16px 8px;
+      color: var(--ink);
+      background: transparent;
+      font-size: 16px;
+      line-height: 1.55;
+    }
+    textarea::placeholder { color: #a49ba7; }
+
+    .primary {
+      width: 100%;
+      min-height: 53px;
+      padding: 14px 20px;
+      border: 0;
+      border-radius: 16px;
+      color: #fff;
+      background: linear-gradient(135deg, #7b668e, #584667);
+      box-shadow: 0 10px 25px rgba(80,61,95,.22);
+      cursor: pointer;
+      font-weight: 700;
+      transition: transform .18s ease, opacity .18s ease;
+    }
+    .primary:active { transform: scale(.985); }
+    .primary:disabled { opacity: .35; cursor: default; box-shadow: none; }
+
+    .recommend-wrap { margin-top: 30px; text-align: left; }
+    .section-label { margin-bottom: 12px; color: #8b7d91; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+    .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .chip {
+      padding: 10px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: #62566a;
+      background: rgba(255,255,255,.7);
+      cursor: pointer;
+      font-size: 13px;
+      transition: .18s ease;
+    }
+    .chip:hover { border-color: #b6a4c0; background: #fff; transform: translateY(-1px); }
+
+    .center-head { padding-top: 44px; text-align: center; }
+    .orb {
+      display: grid;
+      place-items: center;
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 18px;
+      border-radius: 50%;
+      color: var(--gold);
+      background: var(--lavender);
+      box-shadow: inset 0 0 0 1px rgba(110,90,131,.1), 0 10px 30px rgba(84,63,95,.12);
+      font-size: 24px;
+    }
+    .question-quote {
+      margin: 24px 0;
+      padding: 18px;
+      border-radius: 18px;
+      background: rgba(238,232,242,.65);
+      color: #554a5b;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .reason-card {
+      margin: 34px 0 24px;
+      padding: 24px 20px;
+      border: 1px solid rgba(201,168,106,.34);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,.72);
+      box-shadow: var(--shadow);
+      text-align: center;
+    }
+    .big-number { color: var(--plum); font-family: Georgia, serif; font-size: 52px; line-height: 1; }
+    .reason-card p { margin: 12px 0 0; color: var(--muted); font-size: 14px; line-height: 1.65; }
+
+    .pick-screen { overflow: hidden; padding-left: 0; padding-right: 0; }
+    .pick-screen .center-head { padding: 20px 24px 0; }
+    .counter { margin: 10px 0 0; color: var(--plum); font-size: 14px; font-weight: 800; }
+    .deck-stage {
+      position: relative;
+      height: 450px;
+      margin-top: 2px;
+      overflow: hidden;
+    }
+    .deck-halo {
+      position: absolute;
+      left: 50%; bottom: 26px;
+      width: 380px; height: 240px;
+      transform: translateX(-50%);
+      border-radius: 50%;
+      background: radial-gradient(ellipse, rgba(127,102,143,.18), transparent 66%);
+      filter: blur(2px);
+    }
+    .tarot-card {
+      position: absolute;
+      left: calc(50% - 45px);
+      bottom: 60px;
+      width: 90px;
+      height: 154px;
+      padding: 5px;
+      border: 0;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #d1b77c, #9d7f48);
+      box-shadow: 0 8px 16px rgba(44,30,53,.22);
+      transform-origin: 50% 190%;
+      cursor: pointer;
+      transition: filter .18s ease, box-shadow .2s ease;
+    }
+    .card-back {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      border: 1px solid rgba(255,240,199,.55);
+      border-radius: 7px;
+      color: #e4c886;
+      background:
+        linear-gradient(45deg, transparent 47%, rgba(216,188,126,.12) 48% 52%, transparent 53%),
+        linear-gradient(-45deg, transparent 47%, rgba(216,188,126,.12) 48% 52%, transparent 53%),
+        #514062;
+      background-size: 20px 20px;
+      font-family: Georgia, serif;
+      font-size: 22px;
+    }
+    .card-back::before {
+      position: absolute;
+      width: 48px; height: 48px;
+      content: "";
+      border: 1px solid #c8a967;
+      transform: rotate(45deg);
+    }
+    .card-back::after { position: relative; content: "☾"; text-shadow: 0 0 12px rgba(234,210,153,.7); }
+    .tarot-card:hover { filter: brightness(1.08); }
+    .tarot-card.selected { z-index: 30 !important; filter: brightness(1.08); box-shadow: 0 0 0 3px #f3d99f, 0 12px 30px rgba(58,40,70,.32); }
+    .pick-order {
+      position: absolute;
+      top: -12px; right: -11px;
+      display: none;
+      place-items: center;
+      width: 28px; height: 28px;
+      border: 2px solid #fff;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--plum);
+      box-shadow: 0 4px 12px rgba(42,28,49,.28);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .tarot-card.selected .pick-order { display: grid; }
+    .deck-caption { position: absolute; left: 0; right: 0; bottom: 18px; color: #948997; text-align: center; font-size: 12px; }
+    .sticky-action { position: relative; z-index: 60; padding: 0 22px max(22px, env(safe-area-inset-bottom)); }
+
+    .reading-screen { padding: 10px 16px 50px; }
+    .thread-head { padding: 6px 6px 20px; }
+    .thread-kicker { color: #8d8191; font-size: 12px; font-weight: 700; }
+    .user-bubble {
+      max-width: 88%;
+      margin: 6px 0 20px auto;
+      padding: 14px 16px;
+      border-radius: 19px 19px 5px 19px;
+      color: #fff;
+      background: var(--plum);
+      box-shadow: 0 8px 20px rgba(78,58,90,.14);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .guide-row { display: flex; gap: 10px; align-items: flex-start; margin: 0 3px 18px; }
+    .guide-avatar { flex: 0 0 34px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; color: #fff; background: var(--plum); }
+    .guide-copy { padding-top: 5px; color: #675d6c; font-size: 14px; line-height: 1.6; }
+    .reading-block {
+      margin-bottom: 18px;
+      padding: 21px 17px;
+      border: 1px solid rgba(110,90,131,.13);
+      border-radius: 26px;
+      background: rgba(255,255,255,.86);
+      box-shadow: var(--shadow);
+    }
+    .block-label { margin-bottom: 15px; color: #8e8193; font-size: 11px; font-weight: 800; letter-spacing: .1em; }
+    .revealed-cards { display: flex; justify-content: center; gap: 10px; margin: 4px 0 22px; }
+    .revealed { width: min(29%, 104px); text-align: center; }
+    .card-face {
+      position: relative;
+      display: grid;
+      place-items: center;
+      aspect-ratio: 0.59;
+      margin-bottom: 9px;
+      overflow: hidden;
+      border: 3px solid #b79a61;
+      border-radius: 9px;
+      color: #f4dfad;
+      background:
+        radial-gradient(circle at 50% 34%, rgba(232,203,141,.25), transparent 22%),
+        linear-gradient(160deg, #715d82 0 42%, #43344f 100%);
+      box-shadow: 0 8px 18px rgba(45,31,53,.16);
+      font-family: Georgia, serif;
+      font-size: 30px;
+    }
+    .card-face.reversed { transform: rotate(180deg); }
+    .card-face::before { position: absolute; inset: 6px; content: ""; border: 1px solid rgba(235,210,153,.55); border-radius: 5px; }
+    .card-face span { position: relative; }
+    .card-name { color: #4c414f; font-size: 11px; font-weight: 750; line-height: 1.35; }
+    .card-direction { margin-top: 3px; color: #9b8295; font-size: 10px; }
+    .reading-part { padding: 18px 2px; border-top: 1px solid var(--line); }
+    .reading-part:last-child { padding-bottom: 0; }
+    .reading-part h3 { color: var(--plum-deep); }
+    .reading-part p { margin-bottom: 0; color: #635a67; font-size: 14px; line-height: 1.78; }
+    .next-block { padding: 23px 17px; border-radius: 25px; background: #eee8f2; }
+    .next-intro { display: flex; gap: 10px; margin-bottom: 16px; color: #594d60; font-size: 14px; line-height: 1.6; }
+    .next-list { display: grid; gap: 9px; }
+    .next-question {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      width: 100%;
+      padding: 15px;
+      border: 1px solid rgba(110,90,131,.11);
+      border-radius: 16px;
+      color: #4b414f;
+      background: rgba(255,255,255,.78);
+      cursor: pointer;
+      text-align: left;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .next-question small { color: #948698; font-size: 10px; white-space: nowrap; }
+    .direct-button { width: 100%; margin-top: 10px; padding: 14px; border: 1px dashed #b9a9c2; border-radius: 15px; color: var(--plum); background: transparent; cursor: pointer; font-size: 13px; font-weight: 700; }
+    .history-summary { margin: 0 4px 18px; padding: 13px 15px; border-left: 3px solid var(--lavender-2); color: #817585; font-size: 12px; line-height: 1.55; }
+    .history-summary strong { color: var(--plum); }
+    .conversation-thread { display: grid; gap: 28px; }
+    .conversation-turn { scroll-margin-top: 82px; }
+    .conversation-turn:not(:last-child) {
+      padding-bottom: 28px;
+      border-bottom: 1px dashed rgba(110,90,131,.2);
+    }
+    .turn-number { margin: 0 5px 8px; color: #998d9d; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+    .loading-copy { display: none; padding: 18px 0 4px; color: var(--plum); text-align: center; font-size: 13px; }
+    .loading-copy.show { display: block; }
+
+    .modal-backdrop {
+      position: fixed;
+      z-index: 100;
+      inset: 0;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(39,30,43,.38);
+      backdrop-filter: blur(3px);
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: min(100%, 440px);
+      padding: 22px;
+      border-radius: 26px;
+      background: var(--cream);
+      box-shadow: 0 24px 70px rgba(30,20,34,.3);
+      animation: sheet .32s ease;
+    }
+    @keyframes sheet { from { transform: translateY(30px); opacity: 0; } }
+    .modal h3 { margin-bottom: 7px; font-size: 21px; }
+    .modal .question-box { margin-top: 17px; }
+
+    .toast {
+      position: fixed;
+      z-index: 120;
+      left: 50%; bottom: 24px;
+      transform: translate(-50%, 20px);
+      padding: 11px 16px;
+      border-radius: 999px;
+      color: #fff;
+      background: rgba(48,42,54,.9);
+      opacity: 0;
+      pointer-events: none;
+      font-size: 12px;
+      transition: .25s ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (min-width: 700px) {
+      body { padding: 24px 0; }
+      .app { min-height: calc(100vh - 48px); border-radius: 32px; }
+      .screen { min-height: calc(100vh - 120px); }
+      .modal-backdrop { align-items: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="stars"></div>
+    <header>
+      <button class="brand" id="brandBtn" aria-label="처음으로"><span class="brand-mark">☾</span>타로링</button>
+      <button class="ghost-icon" id="resetBtn" aria-label="새 상담" title="새 상담">↻</button>
+    </header>
+
+    <main>
+      <section class="screen active" id="homeScreen">
+        <div class="home-hero">
+          <div class="moon" aria-hidden="true"></div>
+          <span class="eyebrow">✦ 오늘의 마음을 비춰볼게요</span>
+          <h1>지금 가장 궁금한 걸<br>떠올려보세요.</h1>
+          <p class="sub">질문은 구체적일수록 카드의 이야기가 선명해져요.</p>
+
+          <div class="question-box">
+            <textarea id="homeQuestion" maxlength="180" placeholder="예: 그 사람이 저를 어떻게 생각하나요?"></textarea>
+            <button class="primary" id="startBtn">카드에게 물어보기</button>
+          </div>
+
+          <div class="recommend-wrap">
+            <div class="section-label">이런 질문으로 시작해도 좋아요</div>
+            <div class="chips" id="starterChips"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="introScreen">
+        <div class="center-head">
+          <div class="orb">✦</div>
+          <span class="eyebrow">질문을 살펴봤어요</span>
+          <h2>카드의 흐름을<br>함께 볼게요.</h2>
+        </div>
+        <div class="question-quote" id="introQuestion"></div>
+        <div class="reason-card">
+          <div class="big-number" id="cardCountNumber">3</div>
+          <h3><span id="cardCountText">세 장</span>의 카드를 뽑아볼게요</h3>
+          <p id="cardReason"></p>
+        </div>
+        <button class="primary" id="goPickBtn">직접 카드 고르기</button>
+      </section>
+
+      <section class="screen pick-screen" id="pickScreen">
+        <div class="center-head">
+          <span class="eyebrow">마음이 머무는 카드를 골라보세요</span>
+          <h2>천천히, 직접<br>카드를 뽑아주세요.</h2>
+          <p class="counter"><span id="selectedCount">0</span> / <span id="requiredCount">3</span> 선택</p>
+        </div>
+        <div class="deck-stage" id="deckStage">
+          <div class="deck-halo"></div>
+          <div class="deck-caption">카드 끝을 눌러 선택 · 다시 누르면 취소</div>
+        </div>
+        <div class="sticky-action">
+          <button class="primary" id="revealBtn" disabled>카드 열어보기</button>
+        </div>
+      </section>
+
+      <section class="screen reading-screen" id="readingScreen">
+        <div class="conversation-thread" id="conversationThread"></div>
+        <div class="loading-copy" id="loadingCopy">카드의 이야기를 연결하고 있어요…</div>
+
+        <div class="next-block">
+          <div class="next-intro"><span>✦</span><span>이 카드들을 보면, 한 가지를 더 확인해보면 좋을 것 같아요.</span></div>
+          <div class="next-list" id="nextQuestions"></div>
+          <button class="direct-button" id="directQuestionBtn">직접 질문하기</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="questionModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h3 id="modalTitle">이어서 무엇이 궁금한가요?</h3>
+      <p class="sub">앞의 카드 흐름을 이어서 살펴볼게요.</p>
+      <div class="question-box">
+        <textarea id="followupQuestion" maxlength="180" placeholder="궁금한 점을 자유롭게 적어주세요."></textarea>
+        <button class="primary" id="submitFollowupBtn">이 질문으로 이어보기</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script src="./firebase-config.js"></script>
+  <script type="module" src="./firebase.js"></script>
+  <script>
+    (() => {
+      const STORAGE_KEY = 'taroring-mvp-prototype-v1';
+      const starterQuestions = [
+        '그 사람의 마음이 궁금해', '연락해도 될까?', '재회 가능성이 있을까?',
+        '이직해도 될까?', 'A와 B 중 고민돼'
+      ];
+      const tarotCards = [
+        ['the_fool','바보','✦'], ['the_magician','마법사','∞'], ['the_high_priestess','여사제','☾'],
+        ['the_empress','여황제','♢'], ['the_emperor','황제','♜'], ['the_lovers','연인','♡'],
+        ['the_chariot','전차','✧'], ['strength','힘','♌'], ['the_hermit','은둔자','⌁'],
+        ['wheel_of_fortune','운명의 수레바퀴','◎'], ['justice','정의','⚖'], ['the_hanged_man','매달린 사람','▽'],
+        ['death','죽음','✣'], ['temperance','절제','♒'], ['the_devil','악마','♑'],
+        ['the_tower','탑','ϟ'], ['the_star','별','★'], ['the_moon','달','☽'],
+        ['the_sun','태양','☀'], ['judgement','심판','♬'], ['the_world','세계','⊕'],
+        ['two_of_cups','투 오브 컵스','Ⅱ'], ['six_of_cups','식스 오브 컵스','Ⅵ'], ['nine_of_swords','나인 오브 소드','Ⅸ'],
+        ['ace_of_wands','에이스 오브 완드','Ⅰ'], ['seven_of_pentacles','세븐 오브 펜타클','Ⅶ']
+      ];
+      const screens = [...document.querySelectorAll('.screen')];
+      const $ = id => document.getElementById(id);
+      let state = { question: '', count: 3, selected: [], turns: [], currentTurn: 0 };
+
+      function showScreen(id) {
+        screens.forEach(s => s.classList.toggle('active', s.id === id));
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function toast(message) {
+        $('toast').textContent = message;
+        $('toast').classList.add('show');
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => $('toast').classList.remove('show'), 1900);
+      }
+
+      function save() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        window.taroringCloud?.saveSession?.(state).catch(() => {});
+      }
+
+      function clearSession() {
+        localStorage.removeItem(STORAGE_KEY);
+        state = { question: '', count: 3, selected: [], turns: [], currentTurn: 0 };
+        $('homeQuestion').value = '';
+        showScreen('homeScreen');
+        toast('새 상담을 시작할게요');
+      }
+
+      function chooseCount(question) {
+        const oneCardSignals = ['해도 될까', '맞을까', '오늘', '한마디', '조언', '연락해도', '가능할까'];
+        return oneCardSignals.some(word => question.includes(word)) && !question.includes('이유') ? 1 : 3;
+      }
+
+      function countWord(count) { return count === 1 ? '한 장' : '세 장'; }
+
+      async function requestReading(payload) {
+        const response = await fetch('/api/reading', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) throw new Error(`API ${response.status}`);
+        return response.json();
+      }
+
+      async function setQuestion(question) {
+        const clean = question.trim();
+        if (!clean) return toast('궁금한 질문을 먼저 적어주세요');
+        state.question = clean;
+        state.count = chooseCount(clean);
+        let reason = state.count === 1
+          ? '지금은 여러 가능성보다 핵심 메시지 하나를 또렷하게 확인하는 게 좋아요.'
+          : '현재의 마음과 숨은 흐름, 앞으로의 움직임을 함께 보는 게 좋아요.';
+        try {
+          const plan = await requestReading({ action: 'plan', question: clean, history: state.turns });
+          if ([1, 3].includes(plan.cardCount)) state.count = plan.cardCount;
+          if (plan.reason) reason = plan.reason;
+        } catch (_) {
+          // 로컬 파일 또는 API 미설정 상태에서는 프로토타입 규칙으로 동작합니다.
+        }
+        state.selected = [];
+        $('introQuestion').textContent = `“${clean}”`;
+        $('cardCountNumber').textContent = state.count;
+        $('cardCountText').textContent = countWord(state.count);
+        $('cardReason').textContent = reason;
+        save();
+        showScreen('introScreen');
+      }
+
+      function renderDeck() {
+        const oldCards = $('deckStage').querySelectorAll('.tarot-card');
+        oldCards.forEach(c => c.remove());
+        state.selected = [];
+        const total = 19;
+        for (let i = 0; i < total; i++) {
+          const angle = -46 + (92 / (total - 1)) * i;
+          const curve = Math.abs(i - (total - 1) / 2) * 2.5;
+          const card = document.createElement('button');
+          card.className = 'tarot-card';
+          card.setAttribute('aria-label', `${i + 1}번째 카드`);
+          card.dataset.index = i;
+          card.style.zIndex = String(i + 2);
+          card.style.transform = `rotate(${angle}deg) translateY(${curve}px)`;
+          card.innerHTML = '<span class="card-back"></span><span class="pick-order"></span>';
+          card.addEventListener('click', () => toggleCard(card, angle, curve));
+          $('deckStage').appendChild(card);
+        }
+        updateCounter();
+      }
+
+      function toggleCard(card, angle, curve) {
+        const index = Number(card.dataset.index);
+        const selectedAt = state.selected.indexOf(index);
+        if (selectedAt >= 0) {
+          state.selected.splice(selectedAt, 1);
+          card.classList.remove('selected');
+          card.style.transform = `rotate(${angle}deg) translateY(${curve}px)`;
+        } else {
+          if (state.selected.length >= state.count) return toast(`${countWord(state.count)}을 모두 골랐어요`);
+          state.selected.push(index);
+          card.classList.add('selected');
+          card.style.transform = `rotate(${angle}deg) translateY(${curve - 36}px)`;
+        }
+        document.querySelectorAll('.tarot-card').forEach(c => {
+          const n = state.selected.indexOf(Number(c.dataset.index));
+          c.querySelector('.pick-order').textContent = n >= 0 ? n + 1 : '';
+        });
+        updateCounter();
+      }
+
+      function updateCounter() {
+        $('selectedCount').textContent = state.selected.length;
+        $('requiredCount').textContent = state.count;
+        $('revealBtn').disabled = state.selected.length !== state.count;
+      }
+
+      function pickUniqueCards(count) {
+        const used = new Set(state.turns.flatMap(t => t.cards.map(c => c.id)));
+        const pool = tarotCards.filter(c => !used.has(c[0]));
+        const shuffled = [...(pool.length >= count ? pool : tarotCards)].sort(() => Math.random() - .5);
+        return shuffled.slice(0, count).map((card, i) => ({
+          id: card[0], name: card[1], symbol: card[2],
+          direction: Math.random() < .32 ? '역방향' : '정방향',
+          position: count === 1 ? '핵심 메시지' : ['현재 마음', '숨은 흐름', '앞으로의 움직임'][i]
+        }));
+      }
+
+      function makeReading(question, cards) {
+        const names = cards.map(c => `${c.name} ${c.direction}`).join(', ');
+        const relationship = /사람|마음|연락|재회|관계|연애/.test(question);
+        const work = /이직|직장|회사|일|퇴사/.test(question);
+        const choice = /A와 B|선택|고민|어느|둘 중/.test(question);
+        let summary, answer, advice, next;
+        if (relationship) {
+          summary = `${names}의 흐름은 감정이 없기보다, 마음을 드러내기 전 스스로 확신하려는 시간이 길어지고 있음을 보여줘요. 가까워지고 싶은 마음과 조심스러움이 함께 있습니다.`;
+          answer = `상대는 이 관계를 가볍게 넘기고 있지는 않아요. 다만 현재는 감정만으로 바로 행동하기보다 상황과 당신의 반응을 살피는 쪽에 가깝습니다. 빠른 표현보다 작은 신호가 먼저 나타날 가능성이 커요.`;
+          advice = `답을 재촉하기보다는 부담 없는 대화의 문을 열어두세요. 상대의 말보다 반복되는 행동을 기준으로 보면 이 관계의 진짜 온도를 더 정확히 알 수 있습니다.`;
+          next = [
+            ['상대가 마음을 표현하지 못하는 이유는 무엇일까요?', 3],
+            ['앞으로 먼저 행동할 가능성이 있을까요?', 3],
+            ['제가 이 관계에서 어떻게 행동하면 좋을까요?', 1]
+          ];
+        } else if (work) {
+          summary = `${names}은 지금의 피로가 단순한 기분이 아니라 변화가 필요하다는 신호임을 보여줘요. 다만 서둘러 벗어나는 것보다 다음 선택의 기준을 먼저 세워야 하는 흐름입니다.`;
+          answer = `이동 가능성은 열려 있지만, 현재 불만만으로 결정하면 비슷한 문제를 반복할 수 있어요. 역할·보상·성장 중 무엇이 가장 중요한지 선명해질수록 더 좋은 기회를 고를 수 있습니다.`;
+          advice = `퇴사 여부를 바로 정하기보다 원하는 조건 세 가지와 포기할 수 없는 조건 하나를 적어보세요. 준비된 이동이 지금의 답답함을 실제 변화로 바꿉니다.`;
+          next = [
+            ['지금 회사에 남았을 때 얻는 것은 무엇일까요?', 3],
+            ['옮긴다면 가장 먼저 달라질 것은 무엇일까요?', 3],
+            ['제가 놓치고 있는 현실적인 변수는 무엇일까요?', 1]
+          ];
+        } else if (choice) {
+          summary = `${names}은 두 선택지의 우열보다, 당신이 무엇을 지키고 싶은지가 결정의 핵심임을 보여줘요. 겉으로 좋아 보이는 조건과 실제 만족을 주는 조건이 다를 수 있습니다.`;
+          answer = `지금은 더 화려한 선택보다 오래 유지할 수 있는 쪽이 유리해 보여요. 선택 직후의 기대보다 세 달 뒤의 일상을 상상하면 답이 선명해질 가능성이 큽니다.`;
+          advice = `각 선택에서 얻는 것 하나와 감수할 것 하나를 같은 무게로 적어보세요. 잃기 싫은 것을 확인하면 선택의 기준이 자연스럽게 정리됩니다.`;
+          next = [
+            ['A를 선택했을 때 예상하지 못한 변수는 무엇일까요?', 3],
+            ['B를 선택하면 어떤 흐름이 이어질까요?', 3],
+            ['제가 선택에서 가장 중요하게 봐야 할 기준은 무엇일까요?', 1]
+          ];
+        } else {
+          summary = `${names}은 지금 상황이 멈춰 있는 것이 아니라, 보이지 않는 곳에서 방향을 정리하는 중임을 보여줘요. 조급함을 내려놓을수록 중요한 신호가 눈에 들어옵니다.`;
+          answer = `가능성은 열려 있어요. 다만 원하는 결과가 한 번에 오기보다 작은 변화가 이어지며 윤곽을 드러낼 가능성이 큽니다. 지금 보이는 한 장면만으로 결론 내리지 않는 것이 좋아요.`;
+          advice = `바꿀 수 없는 반응을 기다리기보다 오늘 할 수 있는 작은 행동 하나를 정해보세요. 결과보다 나의 기준을 분명히 하는 행동이 다음 흐름을 움직입니다.`;
+          next = [
+            ['이 상황을 막고 있는 가장 큰 변수는 무엇일까요?', 3],
+            ['앞으로 가장 먼저 나타날 변화는 무엇일까요?', 3],
+            ['지금 제가 해야 할 한 가지는 무엇일까요?', 1]
+          ];
+        }
+        return { summary, answer, advice, next };
+      }
+
+      async function revealReading() {
+        const cards = pickUniqueCards(state.count);
+        $('revealBtn').disabled = true;
+        $('revealBtn').textContent = '카드를 읽고 있어요…';
+        let reading;
+        try {
+          reading = await requestReading({
+            action: 'read', question: state.question, cards,
+            history: state.turns.map(({ question, cards, summary, answer, advice }) => ({ question, cards, summary, answer, advice }))
+          });
+          if (!reading?.summary || !reading?.answer || !reading?.advice || !Array.isArray(reading?.next)) {
+            throw new Error('Invalid reading response');
+          }
+          reading.next = reading.next.map(item => Array.isArray(item)
+            ? item : [item.question, item.recommendedCardCount]);
+        } catch (_) {
+          reading = makeReading(state.question, cards);
+          toast('샘플 해석으로 보여드리고 있어요');
+        }
+        state.turns.push({ question: state.question, count: state.count, cards, ...reading, createdAt: new Date().toISOString() });
+        state.currentTurn = state.turns.length - 1;
+        save();
+        renderReading();
+        showScreen('readingScreen');
+        $('revealBtn').textContent = '카드 열어보기';
+      }
+
+      function renderReading() {
+        const turn = state.turns[state.currentTurn];
+        if (!turn) return;
+        $('conversationThread').innerHTML = state.turns.map((item, index) => `
+          <article class="conversation-turn" id="turn-${index}">
+            <div class="turn-number">READING ${String(index + 1).padStart(2, '0')}</div>
+            <div class="thread-head">
+              <div class="thread-kicker">나의 질문</div>
+              <div class="user-bubble">${escapeHtml(item.question)}</div>
+              <div class="guide-row">
+                <div class="guide-avatar">☾</div>
+                <div class="guide-copy">${index ? '앞의 카드 흐름과 연결해서 읽어볼게요.' : '고른 카드를 차례로 열어봤어요. 지금 질문과 연결해서 읽어볼게요.'}</div>
+              </div>
+            </div>
+            <div class="reading-block">
+              <div class="block-label">YOUR CARDS</div>
+              <div class="revealed-cards">${item.cards.map(card => `
+                <div class="revealed">
+                  <div class="card-face ${card.direction === '역방향' ? 'reversed' : ''}"><span>${escapeHtml(card.symbol)}</span></div>
+                  <div class="card-name">${escapeHtml(card.name)}</div>
+                  <div class="card-direction">${escapeHtml(card.position)} · ${escapeHtml(card.direction)}</div>
+                </div>`).join('')}
+              </div>
+              <div class="reading-part"><h3>전체 흐름</h3><p>${escapeHtml(item.summary)}</p></div>
+              <div class="reading-part"><h3>질문에 대한 답</h3><p>${escapeHtml(item.answer)}</p></div>
+              <div class="reading-part"><h3>카드의 조언</h3><p>${escapeHtml(item.advice)}</p></div>
+            </div>
+          </article>`).join('');
+        $('nextQuestions').innerHTML = turn.next.map(([question, count]) => `
+          <button class="next-question" data-question="${question}" data-count="${count}">
+            <span>${question}</span><small>${count}장 추천 →</small>
+          </button>`).join('');
+        $('nextQuestions').querySelectorAll('.next-question').forEach(btn => {
+          btn.addEventListener('click', () => startFollowup(btn.dataset.question, Number(btn.dataset.count)));
+        });
+        requestAnimationFrame(() => document.getElementById(`turn-${state.currentTurn}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      }
+
+      function escapeHtml(value = '') {
+        return String(value).replace(/[&<>'"]/g, char => ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+        })[char]);
+      }
+
+      function startFollowup(question, suggestedCount) {
+        state.question = question;
+        state.count = suggestedCount || chooseCount(question);
+        state.selected = [];
+        $('introQuestion').textContent = `“${question}”`;
+        $('cardCountNumber').textContent = state.count;
+        $('cardCountText').textContent = countWord(state.count);
+        $('cardReason').textContent = state.count === 1
+          ? '앞의 흐름에서 지금 필요한 핵심 메시지 하나를 확인해볼게요.'
+          : '앞에서 본 카드와 연결해 원인과 다음 흐름까지 함께 살펴볼게요.';
+        save();
+        showScreen('introScreen');
+      }
+
+      function openModal() {
+        $('followupQuestion').value = '';
+        $('questionModal').classList.add('open');
+        setTimeout(() => $('followupQuestion').focus(), 100);
+      }
+
+      starterQuestions.forEach(question => {
+        const btn = document.createElement('button');
+        btn.className = 'chip';
+        btn.textContent = question;
+        btn.addEventListener('click', () => { $('homeQuestion').value = question; setQuestion(question); });
+        $('starterChips').appendChild(btn);
+      });
+
+      $('startBtn').addEventListener('click', () => setQuestion($('homeQuestion').value));
+      $('homeQuestion').addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') setQuestion(e.target.value);
+      });
+      $('goPickBtn').addEventListener('click', () => { renderDeck(); showScreen('pickScreen'); });
+      $('revealBtn').addEventListener('click', revealReading);
+      $('directQuestionBtn').addEventListener('click', openModal);
+      $('submitFollowupBtn').addEventListener('click', () => {
+        const q = $('followupQuestion').value.trim();
+        if (!q) return toast('이어갈 질문을 적어주세요');
+        $('questionModal').classList.remove('open');
+        startFollowup(q);
+      });
+      $('questionModal').addEventListener('click', e => {
+        if (e.target === $('questionModal')) $('questionModal').classList.remove('open');
+      });
+      $('brandBtn').addEventListener('click', () => showScreen('homeScreen'));
+      $('resetBtn').addEventListener('click', () => {
+        if (!state.turns.length || confirm('현재 상담을 닫고 새로 시작할까요?')) clearSession();
+      });
+
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (saved?.turns?.length) {
+          state = saved;
+          state.currentTurn = state.turns.length - 1;
+          renderReading();
+          showScreen('readingScreen');
+          toast('이전 상담을 이어서 보여드려요');
+        }
+      } catch (_) { localStorage.removeItem(STORAGE_KEY); }
+    })();
+  </script>
+</body>
+</html>
