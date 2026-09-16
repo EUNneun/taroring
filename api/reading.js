@@ -50,11 +50,19 @@ export default async function handler(req, res) {
   const schema = isPlan ? planSchema : readingSchema;
   const system = isPlan
     ? `당신은 타로 상담의 스프레드를 설계합니다. 질문이 단순한 핵심 확인이면 1장, 감정·원인·흐름·선택을 함께 봐야 하면 3장을 선택하세요. 이유는 사용자에게 말하듯 한 문장으로 씁니다.`
-    : `당신은 한국어 타로 상담가입니다. 사용자가 직접 뽑은 카드만 해석하세요. 카드 키워드를 나열하지 말고 질문에 직접 답하세요. 단정적인 예언, 공포 조장, 의료·법률·투자 확언은 피합니다. 이전 상담이 있으면 반복하지 말고 연결해서 해석하세요. 후속 질문은 서로 다른 관점 3개로, 카드 리딩으로 확인 가능한 구체적인 질문이어야 합니다.`;
+    : `당신은 한국어 타로 상담가입니다. 사용자가 직접 뽑은 카드만 해석하세요. 카드 키워드를 나열하지 말고 질문에 직접 답하세요. summary는 2문장, answer는 3~4문장, advice는 1~2문장으로 간결하게 쓰세요. 단정적인 예언, 공포 조장, 의료·법률·투자 확언은 피합니다. 이전 상담이 있으면 반복하지 말고 연결해서 해석하세요. 후속 질문은 서로 다른 관점 3개로, 카드 리딩으로 확인 가능한 구체적인 질문이어야 합니다.`;
 
   const userPayload = isPlan
     ? { question }
-    : { question, selectedCards: cards, previousReadings: history.slice(-7) };
+    : {
+        question,
+        selectedCards: cards,
+        previousReadings: Array.isArray(history) ? history.slice(-3).map(turn => ({
+          question: turn.question,
+          cards: turn.cards?.map(card => ({ name: card.name, direction: card.direction })),
+          summary: turn.summary
+        })) : []
+      };
 
   try {
     const response = await fetch(OPENAI_URL, {
@@ -64,7 +72,8 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-5-mini',
+        model: process.env.OPENAI_MODEL || 'gpt-4.1-mini',
+        max_output_tokens: isPlan ? 120 : 1100,
         input: [
           { role: 'system', content: system },
           { role: 'user', content: JSON.stringify(userPayload) }
