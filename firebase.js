@@ -41,7 +41,7 @@ if (config?.apiKey && config?.projectId) {
 
   authSdk.onAuthStateChanged(auth, user => {
     window.dispatchEvent(new CustomEvent('taroring-auth', {
-      detail: user ? { uid: user.uid, name: user.displayName || '내 계정' } : null
+      detail: user ? { uid: user.uid, email: user.email, name: user.displayName || '내 계정' } : null
     }));
   });
 }
