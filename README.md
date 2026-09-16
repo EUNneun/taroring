@@ -11,7 +11,7 @@
 - 후속 질문 3개 추천 및 직접 질문
 - 이전 상담 전체를 대화처럼 위로 스크롤해 확인
 - LocalStorage 저장
-- Firebase 익명 인증·Firestore 저장 골격
+- Firebase Google 로그인·사용자별 Firestore 상담 저장 및 최근 상담 불러오기
 - Vercel Serverless API를 통한 OpenAI Responses API 연동
 
 OpenAI API가 설정되지 않았거나 로컬 HTML 파일로 열었을 때는 샘플 해석으로 동작합니다.
@@ -20,7 +20,7 @@ OpenAI API가 설정되지 않았거나 로컬 HTML 파일로 열었을 때는 �
 
 1. `.env.example`을 참고해 Vercel 환경변수에 `OPENAI_API_KEY`를 등록합니다.
 2. `firebase-config.js`에 Firebase Web App 설정을 입력합니다.
-3. Firebase Authentication에서 익명 로그인을 활성화합니다.
+3. Firebase Authentication에서 Google 로그인 제공업체를 활성화하고 `tarotring.vercel.app`을 승인된 도메인에 추가합니다. 커스텀 도메인을 연결하면 `tarotring.eunlab.com`도 추가합니다.
 4. Firestore를 생성하고 `firestore.rules` 내용을 배포합니다.
 5. `npm install` 후 `npm run dev`로 실행합니다.
 
