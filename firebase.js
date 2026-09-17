@@ -67,18 +67,19 @@ if (config?.apiKey && config?.projectId) {
         { merge: true }
       );
     },
-    async loadLatestSession() {
+    async listSessions() {
       const user = auth.currentUser;
-      if (!user) return null;
+      if (!user) return [];
       const snapshot = await firestore.getDocs(firestore.query(
         firestore.collection(db, 'users', user.uid, 'sessions'),
         firestore.orderBy('updatedAt', 'desc'),
-        firestore.limit(1)
+        firestore.limit(50)
       ));
-      if (snapshot.empty) return null;
-      const data = snapshot.docs[0].data();
-      delete data.updatedAt;
-      return decodeFromFirestore(data);
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        delete data.updatedAt;
+        return decodeFromFirestore({ ...data, sessionId: doc.id });
+      });
     }
   };
 
