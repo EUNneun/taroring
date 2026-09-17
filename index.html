@@ -467,6 +467,13 @@
       transition: .25s ease;
     }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .history-button { border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--plum-deep); padding: 8px 12px; cursor: pointer; }
+    .session-list { display: grid; gap: 12px; margin-top: 20px; }
+    .session-item { width: 100%; text-align: left; border: 1px solid var(--line); border-radius: 18px; padding: 18px; background: white; color: var(--ink); cursor: pointer; }
+    .session-item span, .session-item strong { display: block; }
+    .session-item span { color: var(--muted); font-size: 13px; }
+    .session-item strong { font-size: 16px; margin: 8px 0; line-height: 1.5; }
+    .session-empty { color: var(--muted); padding: 30px 10px; text-align: center; }
 
     @media (min-width: 700px) {
       body { padding: 24px 0; }
@@ -482,6 +489,7 @@
     <header>
       <button class="brand" id="brandBtn" aria-label="처음으로"><span class="brand-mark">☾</span>타로링</button>
       <div class="header-actions">
+        <button class="history-button" id="historyBtn">상담 목록</button>
         <button class="auth-button" id="authBtn" hidden>Google 로그인</button>
         <button class="ghost-icon" id="resetBtn" aria-label="새 상담" title="새 상담">↻</button>
       </div>
@@ -505,6 +513,11 @@
             <div class="chips" id="starterChips"></div>
           </div>
         </div>
+      </section>
+
+      <section class="screen" id="historyScreen">
+        <div class="center-head"><span class="eyebrow">MY READINGS</span><h2>상담 목록</h2></div>
+        <div class="session-list" id="sessionList"></div>
       </section>
 
       <section class="screen" id="introScreen">
@@ -567,6 +580,7 @@
   <script>
     (() => {
       const GUEST_STORAGE_KEY = 'taroring-mvp-prototype-v1';
+      const GUEST_ARCHIVE_KEY = 'taroring-guest-sessions-v1';
       const EMPTY_SESSION = () => ({ question: '', count: 3, selected: [], turns: [], currentTurn: 0 });
       const starterQuestions = [
         '그 사람의 마음이 궁금해', '연락해도 될까?', '재회 가능성이 있을까?',
@@ -598,6 +612,7 @@
       let state = EMPTY_SESSION();
       let authUid = null;
       let authSequence = 0;
+      let cloudSessions = [];
       const storageKey = () => authUid ? `tarotring-session-${authUid}` : GUEST_STORAGE_KEY;
 
       function publicCardImageUrl(cardId) {
@@ -629,16 +644,62 @@
       function save() {
         state.sessionId ||= crypto.randomUUID();
         localStorage.setItem(storageKey(), JSON.stringify(state));
+        if (state.turns.length && !authUid) {
+          const archive = readGuestArchive().filter(s => s.sessionId !== state.sessionId);
+          archive.unshift(state);
+          localStorage.setItem(GUEST_ARCHIVE_KEY, JSON.stringify(archive));
+        }
         if (authUid) window.taroringCloud?.saveSession(state).catch(error => {
           console.error('TarotRing cloud save failed:', error);
           toast(cloudSaveErrorMessage(error), 5000);
         });
       }
 
+      function readGuestArchive() {
+        try {
+          const archive = JSON.parse(localStorage.getItem(GUEST_ARCHIVE_KEY) || '[]');
+          return Array.isArray(archive) ? archive : [];
+        } catch (_) { return []; }
+      }
+
+      async function showHistory() {
+        const list = $('sessionList');
+        list.replaceChildren();
+        showScreen('historyScreen');
+        let sessions = readGuestArchive();
+        if (authUid) {
+          list.textContent = '상담을 불러오고 있어요…';
+          try {
+            cloudSessions = await window.taroringCloud.listSessions();
+            sessions = cloudSessions;
+          } catch (_) {
+            sessions = JSON.parse(localStorage.getItem(storageKey()) || 'null')?.turns?.length
+              ? [JSON.parse(localStorage.getItem(storageKey()))] : [];
+            toast('저장된 상담을 불러오지 못했어요');
+          }
+          list.replaceChildren();
+        }
+        const current = JSON.parse(localStorage.getItem(storageKey()) || 'null');
+        if (current?.turns?.length && !sessions.some(s => s.sessionId === current.sessionId)) sessions.unshift(current);
+        sessions.filter(s => s?.turns?.length).forEach(session => {
+          const button = document.createElement('button');
+          button.className = 'session-item';
+          const date = document.createElement('span');
+          date.textContent = `${new Date(session.turns[0].createdAt || Date.now()).toLocaleDateString('ko-KR')} · 질문 ${session.turns.length}개`;
+          const title = document.createElement('strong');
+          title.textContent = session.turns[0].question;
+          const preview = document.createElement('span');
+          preview.textContent = session.turns.at(-1).answer || '상담 내용 보기';
+          button.append(date, title, preview);
+          button.addEventListener('click', () => { restore(session); localStorage.setItem(storageKey(), JSON.stringify(state)); });
+          list.appendChild(button);
+        });
+        if (!list.children.length) list.innerHTML = '<p class="session-empty">아직 저장된 상담이 없어요.</p>';
+      }
+
       function clearSession() {
         localStorage.removeItem(storageKey());
         state = EMPTY_SESSION();
-        if (authUid) save();
         $('homeQuestion').value = '';
         showScreen('homeScreen');
         toast('새 상담을 시작할게요');
@@ -659,7 +720,6 @@
         $('authBtn').hidden = false;
         $('authBtn').textContent = user ? `${user.name} · 로그아웃` : 'Google 로그인';
         if (!user) {
-          if (guest) return;
           state = EMPTY_SESSION();
           showScreen('homeScreen');
           return;
@@ -669,16 +729,13 @@
           state = guest;
           save();
           localStorage.removeItem(GUEST_STORAGE_KEY);
-          restore(state);
+          state = EMPTY_SESSION();
+          showScreen('homeScreen');
           return;
         }
-        if (restore(local)) return;
-        try {
-          const remote = await window.taroringCloud.loadLatestSession();
-          if (sequence !== authSequence) return;
-          if (restore(remote)) localStorage.setItem(storageKey(), JSON.stringify(state));
-          else { state = EMPTY_SESSION(); showScreen('homeScreen'); }
-        } catch (_) { toast('저장된 상담을 불러오지 못했어요'); }
+        if (sequence !== authSequence) return;
+        state = EMPTY_SESSION();
+        showScreen('homeScreen');
       }
 
       function chooseCount(question) {
@@ -701,6 +758,7 @@
       async function setQuestion(question) {
         const clean = question.trim();
         if (!clean) return toast('궁금한 질문을 먼저 적어주세요');
+        if (state.turns.length) state = EMPTY_SESSION();
         state.question = clean;
         state.count = chooseCount(clean);
         let reason = state.count === 1
@@ -953,6 +1011,7 @@
         if (e.target === $('questionModal')) $('questionModal').classList.remove('open');
       });
       $('brandBtn').addEventListener('click', () => showScreen('homeScreen'));
+      $('historyBtn').addEventListener('click', showHistory);
       $('authBtn').addEventListener('click', async () => {
         if (!window.taroringCloud) return toast('로그인 연결을 준비하고 있어요');
         $('authBtn').disabled = true;
@@ -975,13 +1034,6 @@
         if (!state.turns.length || confirm('현재 상담을 닫고 새로 시작할까요?')) clearSession();
       });
 
-      try {
-        const saved = JSON.parse(localStorage.getItem(GUEST_STORAGE_KEY));
-        if (saved?.turns?.length) {
-          restore(saved);
-          toast('이전 상담을 이어서 보여드려요');
-        }
-      } catch (_) { localStorage.removeItem(GUEST_STORAGE_KEY); }
     })();
   </script>
 </body>
