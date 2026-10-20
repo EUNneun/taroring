@@ -1,4 +1,5 @@
 const OPENAI_URL = 'https://api.openai.com/v1/responses';
+const SERVICE_ENABLED = false;
 
 const planSchema = {
   type: 'object',
@@ -41,6 +42,7 @@ function extractOutputText(data) {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!SERVICE_ENABLED) return res.status(503).json({ error: 'TarotRing is temporarily unavailable' });
   if (!process.env.OPENAI_API_KEY) return res.status(503).json({ error: 'OPENAI_API_KEY is not configured' });
 
   const { action, question, cards = [], history = [] } = req.body || {};
