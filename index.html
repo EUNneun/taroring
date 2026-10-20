@@ -939,9 +939,9 @@
                   <div class="card-direction">${escapeHtml(card.position)} · ${escapeHtml(card.direction)}</div>
                 </div>`).join('')}
               </div>
-              <div class="reading-part"><h3>전체 흐름</h3><p>${escapeHtml(item.summary)}</p></div>
-              <div class="reading-part"><h3>질문에 대한 답</h3><p>${escapeHtml(item.answer)}</p></div>
-              <div class="reading-part"><h3>카드의 조언</h3><p>${escapeHtml(item.advice)}</p></div>
+              <div class="reading-part"><h3>한눈에 보면</h3><p>${escapeHtml(item.summary)}</p></div>
+              <div class="reading-part"><h3>그래서 답은</h3><p>${escapeHtml(item.answer)}</p></div>
+              <div class="reading-part"><h3>이렇게 해보세요</h3><p>${escapeHtml(item.advice)}</p></div>
             </div>
           </article>`).join('');
         $('conversationThread').querySelectorAll('.card-face img').forEach(img => {
